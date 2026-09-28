@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PetroChem Challenge - Chemistry Game XI SMA</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Canvas Confetti CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            dark: '#0f172a',
+                            card: '#1e293b',
+                            accent: '#06b6d4',
+                            amber: '#f59e0b',
+                            rose: '#f43f5e',
+                            emerald: '#10b981',
+                            indigo: '#6366f1'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Poppins', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #0b1120;
+            color: #f8fafc;
+            font-family: 'Poppins', sans-serif;
+            user-select: none;
+        }
+        .glow-effect {
+            box-shadow: 0 0 20px rgba(6, 182, 212, 0.35);
+        }
+        .glow-gold {
+            box-shadow: 0 0 20px rgba(245, 158, 11, 0.4);
+        }
+        .tile-card {
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .tile-card:hover:not(.used) {
+            transform: translateY(-4px) scale(1.03);
+            box-shadow: 0 10px 25px -5px rgba(6, 182, 212, 0.5);
+        }
+        .used {
+            opacity: 0.25;
+            cursor: not-allowed;
+            filter: grayscale(80%);
+            background: #1e293b !important;
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+        @keyframes pulse-subtle {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.85; transform: scale(0.98); }
+        }
+        .animate-pulse-subtle {
+            animation: pulse-subtle 3s infinite ease-in-out;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between overflow-x-hidden">
+
+    <!-- Top Header -->
+    <header class="bg-slate-900/90 backdrop-blur border-b border-slate-800 sticky top-0 z-40 px-4 py-3 shadow-lg">
+        <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center space-x-3">
+                <div class="w-11 h-11 rounded-xl bg-gradient-to-tr from-cyan-500 to-indigo-600 flex items-center justify-center text-white text-2xl font-bold shadow-md">
+                    <i class="fa-solid fa-flask-vial"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-extrabold tracking-wide bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 via-teal-300 to-indigo-400">
+                        PetroChem Challenge
+                    </h1>
+                    <p class="text-xs text-slate-400 font-medium">
+                        Hidrokarbon & Minyak Bumi • <span class="text-amber-400 font-semibold">Farikhah Coretta, S.Pd</span> (Guru Kimia XI)
+                    </p>
+                </div>
+            </div>
+
+            <!-- Navigation Controls -->
+            <div class="flex items-center space-x-2">
+                <button onclick="switchTab('board')" id="btn-tab-board" class="px-4 py-2 rounded-lg text-sm font-semibold bg-cyan-600 text-white shadow-md hover:bg-cyan-500 transition">
+                    <i class="fa-solid fa-grid-2 mr-1.5"></i> Papan Tantangan
+                </button>
+                <button onclick="switchTab('wheel')" id="btn-tab-wheel" class="px-4 py-2 rounded-lg text-sm font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 transition">
+                    <i class="fa-solid fa-dharmachakra mr-1.5"></i> Roda Hoki
+                </button>
+                <button onclick="switchTab('fraction')" id="btn-tab-fraction" class="px-4 py-2 rounded-lg text-sm font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 transition">
+                    <i class="fa-solid fa-industry mr-1.5"></i> Distilasi Bertingkat
+                </button>
+                <button onclick="resetGamePrompt()" class="px-3 py-2 rounded-lg text-sm font-semibold bg-rose-900/40 text-rose-300 border border-rose-700/50 hover:bg-rose-800/60 transition" title="Reset Ulang Game">
+                    <i class="fa-solid fa-rotate-right"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 py-6 w-full flex-grow">
+
+        <!-- TAB 1: BOARD GAME (JEOPARDY STYLE) -->
+        <div id="tab-board" class="space-y-6">
+            
+            <!-- Scoreboard Section for 6 Teams -->
+            <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 shadow-xl">
+                <div class="flex justify-between items-center mb-3 px-1">
+                    <h2 class="text-sm font-bold uppercase tracking-wider text-slate-400 flex items-center">
+                        <i class="fa-solid fa-trophy text-amber-400 mr-2 text-base"></i> Papan Skor 6 Tim
+                    </h2>
+                    <span class="text-xs text-slate-500">Klik nama tim untuk edit • Klik (+) / (-) untuk ubah poin manual</span>
+                </div>
+
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3" id="teams-container">
+                    <!-- Dynamic Team Cards Injected via JS -->
+                </div>
+            </div>
+
+            <!-- Category Matrix Board -->
+            <div class="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-4 shadow-2xl">
+                <div class="grid grid-cols-6 gap-2 text-center font-bold text-xs md:text-sm uppercase tracking-wide text-cyan-300 mb-3 bg-slate-800/80 p-3 rounded-xl border border-slate-700/50">
+                    <div class="p-1">1. Tata Nama</div>
+                    <div class="p-1">2. Isomer & Sifat</div>
+                    <div class="p-1">3. Reaksi</div>
+                    <div class="p-1">4. Fraksi Minyak</div>
+                    <div class="p-1">5. Angka Oktan</div>
+                    <div class="p-1">6. Dampak & Solusi</div>
+                </div>
+
+                <div class="grid grid-cols-6 gap-2 md:gap-3" id="jeopardy-grid">
+                    <!-- Dynamic 30 Tiles generated by JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: SPIN WHEEL (RODA HOKI) -->
+        <div id="tab-wheel" class="hidden flex flex-col items-center justify-center space-y-6 py-6">
+            <div class="text-center max-w-xl">
+                <h2 class="text-3xl font-extrabold text-amber-400 mb-2">
+                    <i class="fa-solid fa-dharmachakra animate-spin-slow"></i> Roda Hoki & Tantangan
+                </h2>
+                <p class="text-sm text-slate-300">
+                    Gunakan roda ini untuk menentukan tim mana yang berhak menjawab, memilih tantangan acak, atau memberikan poin bonus kejutan!
+                </p>
+            </div>
+
+            <div class="relative flex flex-col items-center">
+                <!-- Pointer -->
+                <div class="w-0 h-0 border-x-8 border-x-transparent border-t-[20px] border-t-amber-400 z-10 -mb-3 drop-shadow-md"></div>
+                
+                <!-- Wheel Canvas -->
+                <canvas id="wheel-canvas" width="380" height="380" class="rounded-full shadow-2xl border-4 border-slate-700 bg-slate-900"></canvas>
+
+                <button onclick="spinWheel()" id="spin-btn" class="mt-6 px-8 py-3 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-slate-950 font-extrabold text-lg rounded-full shadow-lg transition transform active:scale-95 flex items-center gap-2">
+                    <i class="fa-solid fa-play"></i> PUTAR RODA!
+                </button>
+            </div>
+
+            <div id="wheel-result" class="hidden bg-slate-800 border-2 border-amber-500/50 rounded-2xl p-4 text-center max-w-md w-full animate-bounce">
+                <span class="text-xs uppercase font-semibold text-amber-400 tracking-wider">Hasil Putaran:</span>
+                <p class="text-2xl font-black text-white mt-1" id="wheel-result-text">-</p>
+            </div>
+        </div>
+
+        <!-- TAB 3: FRACTIONAL DISTILLATION DIAGRAM -->
+        <div id="tab-fraction" class="hidden space-y-6">
+            <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-xl">
+                <div class="max-w-3xl mx-auto text-center mb-8">
+                    <h2 class="text-2xl font-bold text-cyan-400 mb-2">
+                        <i class="fa-solid fa-industry text-amber-400"></i> Menara Distilasi Bertingkat Minyak Bumi
+                    </h2>
+                    <p class="text-sm text-slate-300">
+                        Klik pada setiap fraksi di kolom menara untuk mempelajari rentang titik didih, jumlah atom karbon ($C$), serta kegunaannya dalam kehidupan sehari-hari.
+                    </p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+                    <!-- Menara Visual -->
+                    <div class="md:col-span-5 flex flex-col items-center space-y-2 relative bg-slate-950 p-6 rounded-2xl border border-slate-800">
+                        <div class="text-xs font-bold text-slate-400 mb-2">MENARA FRAKSIONASI</div>
+                        
+                        <!-- Fractions stacked top to bottom -->
+                        <div onclick="showFractionInfo(0)" class="w-full bg-cyan-900/50 hover:bg-cyan-800 border border-cyan-500/50 p-3 rounded-lg cursor-pointer transition flex justify-between items-center">
+                            <span class="font-bold text-cyan-200 text-sm">Gas Alam (LPG)</span>
+                            <span class="text-xs bg-cyan-950 px-2 py-1 rounded text-cyan-400">&lt; 20 °C</span>
+                        </div>
+                        <div onclick="showFractionInfo(1)" class="w-full bg-teal-900/50 hover:bg-teal-800 border border-teal-500/50 p-3 rounded-lg cursor-pointer transition flex justify-between items-center">
+                            <span class="font-bold text-teal-200 text-sm">Petroleum Eter / Bensin</span>
+                            <span class="text-xs bg-teal-950 px-2 py-1 rounded text-teal-400">20 - 150 °C</span>
+                        </div>
+                        <div onclick="showFractionInfo(2)" class="w-full bg-amber-900/50 hover:bg-amber-800 border border-amber-500/50 p-3 rounded-lg cursor-pointer transition flex justify-between items-center">
+                            <span class="font-bold text-amber-200 text-sm">Nafta / Kerosin (Minyak Tanah)</span>
+                            <span class="text-xs bg-amber-950 px-2 py-1 rounded text-amber-400">150 - 200 °C</span>
+                        </div>
+                        <div onclick="showFractionInfo(3)" class="w-full bg-orange-900/50 hover:bg-orange-800 border border-orange-500/50 p-3 rounded-lg cursor-pointer transition flex justify-between items-center">
+                            <span class="font-bold text-orange-200 text-sm">Solar / Diesel</span>
+                            <span class="text-xs bg-orange-950 px-2 py-1 rounded text-orange-400">200 - 370 °C</span>
+                        </div>
+                        <div onclick="showFractionInfo(4)" class="w-full bg-rose-900/50 hover:bg-rose-800 border border-rose-500/50 p-3 rounded-lg cursor-pointer transition flex justify-between items-center">
+                            <span class="font-bold text-rose-200 text-sm">Oli / Pelumas</span>
+                            <span class="text-xs bg-rose-950 px-2 py-1 rounded text-rose-400">350 - 400 °C</span>
+                        </div>
+                        <div onclick="showFractionInfo(5)" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-600 p-3 rounded-lg cursor-pointer transition flex justify-between items-center">
+                            <span class="font-bold text-slate-200 text-sm">Lilin Parafin / Aspal (Residu)</span>
+                            <span class="text-xs bg-slate-900 px-2 py-1 rounded text-slate-400">&gt; 400 °C</span>
+                        </div>
+
+                        <!-- Input Minyak Mentah -->
+                        <div class="mt-4 w-full bg-amber-900/30 border border-amber-600/40 p-2 text-center rounded text-xs text-amber-300 font-semibold">
+                            <i class="fa-solid fa-fire mr-1"></i> Uap Minyak Mentah Panas (350–400°C) Masuk
+                        </div>
+                    </div>
+
+                    <!-- Info Panel Details -->
+                    <div class="md:col-span-7 bg-slate-800/80 border border-slate-700/60 rounded-2xl p-6 min-h-[350px] flex flex-col justify-between" id="fraction-detail-panel">
+                        <div>
+                            <div class="flex items-center space-x-3 mb-4">
+                                <div class="w-10 h-10 rounded-lg bg-cyan-500/20 border border-cyan-500 flex items-center justify-center text-cyan-400 text-xl font-bold">
+                                    <i class="fa-solid fa-oil-well"></i>
+                                </div>
+                                <div>
+                                    <h3 class="text-xl font-bold text-white" id="frac-title">Pilih Fraksi Minyak Bumi</h3>
+                                    <p class="text-xs text-slate-400" id="frac-sub">Klik salah satu tingkat di sebelah kiri</p>
+                                </div>
+                            </div>
+
+                            <div class="space-y-3 text-sm">
+                                <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-700">
+                                    <span class="text-xs text-slate-400 uppercase font-bold block mb-1">Jumlah Atom Karbon ($C$):</span>
+                                    <p class="text-cyan-300 font-semibold" id="frac-carbon">-</p>
+                                </div>
+                                <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-700">
+                                    <span class="text-xs text-slate-400 uppercase font-bold block mb-1">Titik Didih:</span>
+                                    <p class="text-amber-300 font-semibold" id="frac-boiling">-</p>
+                                </div>
+                                <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-700">
+                                    <span class="text-xs text-slate-400 uppercase font-bold block mb-1">Kegunaan Utamanya:</span>
+                                    <p class="text-slate-200" id="frac-usage">-</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 p-3 bg-indigo-950/40 border border-indigo-800/40 rounded-xl text-xs text-indigo-300">
+                            <strong>Prinsip Kerja:</strong> Pemisahan fraksi minyak bumi berdasarkan perbedaan **titik didih**. Senyawa dengan titik didih lebih rendah (rantai C pendek) akan menguap paling atas.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- QUESTION MODAL DIALOG -->
+    <div id="question-modal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border-2 border-cyan-500/60 rounded-3xl max-w-2xl w-full p-6 shadow-2xl relative overflow-hidden flex flex-col max-h-[90vh]">
+            
+            <!-- Modal Header -->
+            <div class="flex justify-between items-center border-b border-slate-800 pb-4 mb-4">
+                <div class="flex items-center space-x-2">
+                    <span id="modal-category-tag" class="px-3 py-1 bg-cyan-950 text-cyan-300 border border-cyan-700/50 rounded-full text-xs font-extrabold uppercase tracking-wider">
+                        Kategori
+                    </span>
+                    <span id="modal-points-tag" class="px-3 py-1 bg-amber-950 text-amber-300 border border-amber-700/50 rounded-full text-xs font-extrabold">
+                        500 POIN
+                    </span>
+                </div>
+                <!-- Timer Box -->
+                <div class="flex items-center space-x-2 bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-700">
+                    <i class="fa-solid fa-stopwatch text-rose-400 animate-pulse"></i>
+                    <span id="modal-timer" class="font-mono text-xl font-bold text-white">45s</span>
+                </div>
+            </div>
+
+            <!-- Question Content -->
+            <div class="overflow-y-auto space-y-4 pr-1 flex-grow">
+                <h3 id="modal-question-text" class="text-lg md:text-xl font-bold text-slate-100 leading-relaxed">
+                    Pertanyaan akan muncul di sini...
+                </h3>
+
+                <div id="modal-image-container" class="hidden justify-center my-3">
+                    <!-- Optional Structure Image / Formula box -->
+                </div>
+
+                <!-- Answer Reveal Area -->
+                <div id="answer-box" class="hidden bg-emerald-950/60 border border-emerald-500/50 p-4 rounded-2xl mt-4 animate-fade-in">
+                    <span class="text-xs text-emerald-400 font-bold uppercase tracking-wider block mb-1">
+                        <i class="fa-solid fa-circle-check mr-1"></i> Kunci Jawaban / Penjelasan:
+                    </span>
+                    <p id="modal-answer-text" class="text-emerald-100 font-semibold text-base">
+                        Kunci jawaban akan ditampilkan di sini.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Timer Controls & Answer Button -->
+            <div class="pt-4 border-t border-slate-800 flex flex-wrap justify-between items-center gap-2">
+                <div class="flex items-center space-x-2">
+                    <button onclick="toggleTimer()" id="btn-timer-toggle" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-xs font-bold rounded-xl text-slate-300 transition">
+                        <i class="fa-solid fa-pause mr-1"></i> Pause Timer
+                    </button>
+                    <button onclick="revealAnswer()" class="px-4 py-2 bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold rounded-xl shadow transition">
+                        <i class="fa-solid fa-eye mr-1"></i> Buka Kunci Jawaban
+                    </button>
+                </div>
+
+                <!-- Award Points to Team Section -->
+                <div class="w-full pt-3 border-t border-slate-800/80 flex flex-col space-y-2">
+                    <span class="text-xs font-bold text-slate-400 flex items-center justify-between">
+                        <span>Beri Poin Kepada Tim yang Menjawab Benar:</span>
+                        <span class="text-rose-400 cursor-pointer hover:underline text-[11px]" onclick="awardPoints(-1)">Tidak Ada Yang Benar / Lewat</span>
+                    </span>
+                    <div class="grid grid-cols-3 md:grid-cols-6 gap-2" id="award-teams-buttons">
+                        <!-- 6 Team award buttons injected via JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Close Modal Corner Button -->
+            <button onclick="closeQuestionModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-lg">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-slate-950 border-t border-slate-900 py-4 px-4 text-center text-xs text-slate-500">
+        <p>© 2026 PetroChem Challenge • Dirancang untuk Pembelajaran Kimia XI SMA oleh <strong>Farikhah Coretta, S.Pd</strong></p>
+    </footer>
+
+    <script>
+        // Game State Variables
+        const defaultTeams = [
+            { id: 1, name: "Alkana", score: 0, color: "from-cyan-600 to-blue-700" },
+            { id: 2, name: "Alkena", score: 0, color: "from-teal-600 to-emerald-700" },
+            { id: 3, name: "Alkuna", score: 0, color: "from-indigo-600 to-violet-700" },
+            { id: 4, name: "Benzena", score: 0, color: "from-purple-600 to-pink-700" },
+            { id: 5, name: "Isooktana", score: 0, color: "from-amber-600 to-orange-700" },
+            { id: 6, name: "Petrolium", score: 0, color: "from-rose-600 to-red-700" }
+        ];
+
+        let teams = JSON.parse(localStorage.getItem('chem_teams')) || defaultTeams;
+        let usedQuestions = JSON.parse(localStorage.getItem('chem_used_q')) || [];
+        
+        let activeQuestion = null;
+        let timerInterval = null;
+        let timerSeconds = 45;
+        let isTimerRunning = false;
+
+        const questionsDatabase = [
+            // Kategori 1: Tata Nama & Rumus (Cat 0)
+            { id: "c0_100", cat: 0, points: 100, text: "Tuliskan rumus umum molekul untuk kelompok senyawa Alkana, Alkena, dan Alkuna!", answer: "Alkana: C_n H_{2n+2} | Alkena: C_n H_{2n} | Alkuna: C_n H_{2n-2}" },
+            { id: "c0_200", cat: 0, points: 200, text: "Beri nama IUPAC yang tepat untuk senyawa struktur berikut: CH₃-CH(CH₃)-CH₂-CH₃!", answer: "2-metilbutana" },
+            { id: "c0_300", cat: 0, points: 300, text: "Beri nama IUPAC untuk senyawa alkuna berikut: CH₃-C≡C-CH(CH₃)-CH₃!", answer: "4-metil-2-pentuna" },
+            { id: "c0_400", cat: 0, points: 400, text: "Sebutkan jumlah atom Karbon Primer, Sekunder, dan Tersier pada senyawa 2,3-dimetilpentana!", answer: "Primer: 4, Sekunder: 1, Tersier: 2, Kuartener: 0" },
+            { id: "c0_500", cat: 0, points: 500, text: "Tuliskan nama IUPAC yang benar untuk senyawa alkena bercabang berikut: CH₃-CH=C(C₂H₅)-CH₂-CH₃!", answer: "3-etil-2-pentena (Rantai utama 5 karbon, ikatan rangkap di nomor 2)" },
+
+            // Kategori 2: Isomer & Sifat Fisika (Cat 1)
+            { id: "c1_100", cat: 1, points: 100, text: "Apa yang dimaksud dengan fenomena Isomer pada senyawa hidrokarbon?", answer: "Senyawa-senyawa yang memiliki rumus molekul sama, tetapi rumus struktur/konfigurasi ruangnya berbeda." },
+            { id: "c1_200", cat: 1, points: 200, text: "Manakah yang memiliki titik didih lebih tinggi antara n-pentana dan 2,2-dimetilpropana? Jelaskan alasannya!", answer: "n-pentana lebih tinggi. Karena rantai lurus memiliki luas permukaan kontak antar molekul yang lebih besar dibandingkan bentuk bercabang (sferis/bulat)." },
+            { id: "c1_300", cat: 1, points: 300, text: "Sebutkan jenis-jenis isomer yang dapat terjadi pada senyawa Alkena!", answer: "Isomer Rangka, Isomer Posisi, dan Isomer Geometri (cis-trans)." },
+            { id: "c1_400", cat: 1, points: 400, text: "Berapakah jumlah isomer struktur (rantai & posisi) yang dimiliki oleh senyawa alkana dengan rumus molekul C₅H₁₂?", answer: "3 Isomer: n-pentana, 2-metilbutana (isopentana), dan 2,2-dimetilpropana (neopentana)." },
+            { id: "c1_500", cat: 1, points: 500, text: "Gambarkan atau jelaskan perbedaan antara isomer Cis-2-butena dan Trans-2-butena!", answer: "Cis-2-butena: Gugus -CH₃ berada pada sisi yang sama dari ikatan rangkap C=C. Trans-2-butena: Gugus -CH₃ berada pada sisi yang berseberangan." },
+
+            // Kategori 3: Reaksi Hidrokarbon (Cat 2)
+            { id: "c2_100", cat: 2, points: 100, text: "Reaksi antara Alkana dengan gas Klorin (Cl₂) dengan bantuan sinar UV termasuk jenis reaksi apa?", answer: "Reaksi Substitusi (Penukaran atom H oleh Cl)." },
+            { id: "c2_200", cat: 2, points: 200, text: "Tuliskan persamaan reaksi pembakaran sempurna untuk gas Propana (C₃H₈)!", answer: "C₃H₈ + 5O₂ → 3CO₂ + 4H₂O" },
+            { id: "c2_300", cat: 2, points: 300, text: "Apakah produk utama dari reaksi adisi asam klorida (HCl) pada propena (CH₂=CH-CH₃) berdasarkan Aturan Markovnikov?", answer: "2-kloropropana (CH₃-CHCl-CH₃). Atom H dari HCl masuk ke C rangkap yang mengikat H lebih banyak." },
+            { id: "c2_400", cat: 2, points: 400, text: "Reaksi pengubahan etanol menjadi etena dengan melepaskan molekul air (H₂O) dinamakan reaksi...?", answer: "Reaksi Eliminasi (dehidrasi alkohol)." },
+            { id: "c2_500", cat: 2, points: 500, text: "Prediksikan hasil reaksi adisi antara 2-metil-2-butena dengan gas Hidrogen (H₂) menggunakan katalis Ni!", answer: "2-metilbutana (Alkena berubah menjadi Alkana jenuh)." },
+
+            // Kategori 4: Fraksi Minyak Bumi (Cat 3)
+            { id: "c3_100", cat: 3, points: 100, text: "Prinsip pemisahan minyak mentah pada kolom distilasi bertingkat didasarkan pada perbedaan...?", answer: "Perbedaan Titik Didih (Boiling Point) antar fraksi hidrokarbon." },
+            { id: "c3_200", cat: 3, points: 200, text: "Fraksi minyak bumi manakah yang keluar pada bagian paling atas menara distilasi?", answer: "Fraksi Gas Alam / LPG (Karbon C1–C4) karena memiliki titik didih terkecil (< 20°C)." },
+            { id: "c3_300", cat: 3, points: 300, text: "Urutkan fraksi minyak bumi berikut dari titik didih terendah hingga tertinggi: Kerosin, Bensin, Solar, LPG, Aspal!", answer: "LPG → Bensin → Kerosin → Solar → Aspal." },
+            { id: "c3_400", cat: 3, points: 400, text: "Apa nama proses pengolahan minyak bumi yang bertujuan memecahkan molekul hidrokarbon rantai panjang/berat menjadi rantai pendek yang lebih bernilai (seperti bensin)?", answer: "Proses Cracking (Peretakan/Perekahan)." },
+            { id: "c3_500", cat: 3, points: 500, text: "Jelaskan perbedaan antara proses Reforming dan Alkilasi pada kilang pemurnian minyak bumi!", answer: "Reforming: Mengubah struktur rantai lurus menjadi bercabang/alifatik menjadi aromatik. Alkilasi: Menggabungkan molekul hidrokarbon pendek menjadi molekul lebih panjang bermutu tinggi." },
+
+            // Kategori 5: Angka Oktan & Bensin (Cat 4)
+            { id: "c4_100", cat: 4, points: 100, text: "Apa arti dari angka oktan pada bahan bakar bensin?", answer: "Ukuran kemampuan/ketahanan bahan bakar bensin terhadap ketukan (knocking/detonasi) di dalam mesin." },
+            { id: "c4_200", cat: 4, points: 200, text: "Bensin Pertamax memiliki Angka Oktan 92. Jelaskan komposisi campuran standar pembandingnya!", answer: "Setara dengan campuran 92% Isooktana (2,2,4-trimetilpentana) dan 8% n-heptana." },
+            { id: "c4_300", cat: 4, points: 300, text: "Mengapa TEL (Tetra Ethyl Lead) saat ini sudah dilarang digunakan sebagai zat aditif peningkat oktan bensin?", answer: "Karena menghasilkan emisi logam beracun Timbal (Pb) yang merusak kesehatan saraf/otak dan mencemari lingkungan." },
+            { id: "c4_400", cat: 4, points: 400, text: "Sebutkan nama zat aditif ramah lingkungan pengganti TEL yang umum ditambahkan pada bensin modern!", answer: "MTBE (Methyl Tert-Butyl Ether) atau Ethanol." },
+            { id: "c4_500", cat: 4, points: 500, text: "Sebutkan nama IUPAC dan gambar struktur dari Isooktana yang diberi nilai oktan standar 100!", answer: "Nama IUPAC: 2,2,4-trimetilpentana." },
+
+            // Kategori 6: Dampak & Solusi Lingkungan (Cat 5)
+            { id: "c5_100", cat: 5, points: 100, text: "Gas beracun tak berwarna dan tak berbau hasil pembakaran tidak sempurna hidrokarbon adalah...?", answer: "Gas Karbon Monoksida (CO)." },
+            { id: "c5_200", cat: 5, points: 200, text: "Gas SO₂ dan SO₃ hasil pembakaran bahan bakar fosil dapat menyebabkan fenomena lingkungan berupa...?", answer: "Hujan Asam (Acid Rain)." },
+            { id: "c5_300", cat: 5, points: 300, text: "Gas CO₂ hasil pembakaran hidrokarbon secara berlebihan di atmosfer menyebabkan masalah global yaitu...?", answer: "Efek Rumah Kaca / Pemanasan Global (Global Warming)." },
+            { id: "c5_400", cat: 5, points: 400, text: "Alat pengolah gas buang pada knalpot mobil modern yang mengubah CO dan NO_x menjadi CO₂ dan N₂ disebut...?", answer: "Converter Catalytic (Katalitik Konverter)." },
+            { id: "c5_500", cat: 5, points: 500, text: "Berikan 2 contoh energi terbarukan pengganti bahan bakar fosil minyak bumi!", answer: "Biofuel / Biodiesel (dari kelapa sawit/jarak), Energi Surya, Bioethanol, Energi Angin, Hydrogen Fuel." }
+        ];
+
+        const fractionDetails = [
+            { title: "Gas Alam (LPG)", carbon: "C1 - C4", boiling: "< 20 °C", usage: "Bahan bakar gas elpiji dapur, bahan baku industri kimia, pemantik korek gas." },
+            { title: "Petroleum Eter & Bensin (Gazolin)", carbon: "C5 - C12", boiling: "20 °C - 150 °C", usage: "Bahan bakar kendaraan bermotor roda dua dan empat, pelarut non-polar." },
+            { title: "Nafta & Kerosin (Minyak Tanah)", carbon: "C10 - C16", boiling: "150 °C - 200 °C", usage: "Bahan bakar pesawat terbang (Avtur), kompor minyak tanah, bahan baku industri plastik/petrokimia." },
+            { title: "Solar (Diesel) & Gas Oil", carbon: "C14 - C20", boiling: "200 °C - 370 °C", usage: "Bahan bakar mesin diesel truk, bus, kereta api, dan generator industri." },
+            { title: "Minyak Pelumas (Oli)", carbon: "C20 - C50", boiling: "350 °C - 400 °C", usage: "Pelumas mesin kendaraan/mesin pabrik untuk mengurangi gesekan dan keausan." },
+            { title: "Parafin Wax & Aspal (Residu)", carbon: "> C50", boiling: "> 400 °C", usage: "Pengaspalan jalan raya, pembuatan lilin, insulasi pelapis anti air, korek api." }
+        ];
+
+        const playSFX = (type) => {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+
+                if (type === 'correct') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(523.25, ctx.currentTime); // C5
+                    osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.3); // A5
+                    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+                    osc.start();
+                    osc.stop(ctx.currentTime + 0.3);
+                } else if (type === 'wrong') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(220, ctx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(110, ctx.currentTime + 0.4);
+                    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
+                    osc.start();
+                    osc.stop(ctx.currentTime + 0.4);
+                } else if (type === 'click') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(400, ctx.currentTime);
+                    gain.gain.setValueAtTime(0.1, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.05);
+                    osc.start();
+                    osc.stop(ctx.currentTime + 0.05);
+                }
+            } catch (e) {
+                console.log("Audio play blocked or unsupported.");
+            }
+        };
+
+        function renderTeams() {
+            const container = document.getElementById('teams-container');
+            container.innerHTML = '';
+
+            teams.forEach((team, index) => {
+                const card = document.createElement('div');
+                card.className = `bg-gradient-to-br ${team.color} p-3 rounded-2xl border border-white/10 shadow-lg flex flex-col justify-between relative overflow-hidden transition transform hover:scale-[1.02]`;
+                
+                card.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <input type="text" value="${team.name}" onchange="updateTeamName(${index}, this.value)" 
+                            class="bg-transparent text-white font-black text-sm w-full focus:outline-none focus:bg-black/30 rounded px-1 tracking-tight border-b border-transparent focus:border-white/50">
+                    </div>
+                    <div class="my-2 text-center">
+                        <span class="text-3xl font-black text-white tracking-wider font-mono">${team.score}</span>
+                        <span class="text-[10px] text-white/80 block uppercase font-bold tracking-widest">Poin</span>
+                    </div>
+                    <div class="flex items-center justify-between gap-1 pt-2 border-t border-white/20">
+                        <button onclick="adjustScore(${index}, -100)" class="w-1/2 py-1 bg-black/20 hover:bg-black/40 text-white rounded text-xs font-bold transition">-100</button>
+                        <button onclick="adjustScore(${index}, 100)" class="w-1/2 py-1 bg-white/20 hover:bg-white/30 text-white rounded text-xs font-bold transition">+100</button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+
+            saveState();
+        }
+
+        function updateTeamName(index, newName) {
+            teams[index].name = newName || `Tim ${index+1}`;
+            saveState();
+            renderAwardButtons();
+        }
+
+        function adjustScore(index, delta) {
+            playSFX('click');
+            teams[index].score += delta;
+            renderTeams();
+        }
+
+        function renderJeopardyGrid() {
+            const grid = document.getElementById('jeopardy-grid');
+            grid.innerHTML = '';
+
+            for (let pointVal = 100; pointVal <= 500; pointVal += 100) {
+                for (let catIdx = 0; catIdx < 6; catIdx++) {
+                    const q = questionsDatabase.find(item => item.cat === catIdx && item.points === pointVal);
+                    if (!q) continue;
+                    const isUsed = usedQuestions.includes(q.id);
+
+                    const tile = document.createElement('div');
+                    tile.className = `tile-card h-16 md:h-20 rounded-xl flex items-center justify-center font-black text-lg md:text-xl cursor-pointer border ${
+                        isUsed 
+                        ? 'used border-slate-800 text-slate-600' 
+                        : 'bg-gradient-to-br from-slate-800 to-slate-900 border-cyan-500/30 text-cyan-400 hover:border-cyan-400 hover:text-amber-300'
+                    }`;
+
+                    tile.innerHTML = isUsed ? '<i class="fa-solid fa-check text-slate-600"></i>' : `${q.points}`;
+                    
+                    if (!isUsed) {
+                        tile.onclick = () => openQuestion(q);
+                    }
+
+                    grid.appendChild(tile);
+                }
+            }
+        }
+
+        function openQuestion(q) {
+            playSFX('click');
+            activeQuestion = q;
+            
+            const categories = ["Tata Nama", "Isomer & Sifat", "Reaksi", "Fraksi Minyak", "Angka Oktan", "Dampak & Solusi"];
+            
+            document.getElementById('modal-category-tag').innerText = categories[q.cat];
+            document.getElementById('modal-points-tag').innerText = `${q.points} POIN`;
+            document.getElementById('modal-question-text').innerText = q.text;
+            document.getElementById('modal-answer-text').innerText = q.answer;
+            document.getElementById('answer-box').classList.add('hidden');
+
+            renderAwardButtons();
+
+            // Setup timer (45s default)
+            timerSeconds = 45;
+            updateTimerDisplay();
+            startTimer();
+
+            document.getElementById('question-modal').classList.remove('hidden');
+        }
+
+        function renderAwardButtons() {
+            const container = document.getElementById('award-teams-buttons');
+            container.innerHTML = '';
+
+            teams.forEach((team, index) => {
+                const btn = document.createElement('button');
+                btn.className = `p-2 rounded-xl bg-gradient-to-r ${team.color} text-white font-bold text-xs truncate shadow hover:opacity-90 transition`;
+                btn.innerText = `+ ${team.name}`;
+                btn.onclick = () => awardPoints(index);
+                container.appendChild(btn);
+            });
+        }
+
+        function startTimer() {
+            clearInterval(timerInterval);
+            isTimerRunning = true;
+            document.getElementById('btn-timer-toggle').innerHTML = '<i class="fa-solid fa-pause mr-1"></i> Pause';
+
+            timerInterval = setInterval(() => {
+                if (timerSeconds > 0) {
+                    timerSeconds--;
+                    updateTimerDisplay();
+                } else {
+                    clearInterval(timerInterval);
+                    isTimerRunning = false;
+                    playSFX('wrong');
+                    document.getElementById('modal-timer').innerText = "Waktu Habis!";
+                }
+            }, 1000);
+        }
+
+        function toggleTimer() {
+            playSFX('click');
+            if (isTimerRunning) {
+                clearInterval(timerInterval);
+                isTimerRunning = false;
+                document.getElementById('btn-timer-toggle').innerHTML = '<i class="fa-solid fa-play mr-1"></i> Resume';
+            } else {
+                startTimer();
+            }
+        }
+
+        function updateTimerDisplay() {
+            document.getElementById('modal-timer').innerText = `${timerSeconds}s`;
+        }
+
+        function revealAnswer() {
+            playSFX('click');
+            document.getElementById('answer-box').classList.remove('hidden');
+        }
+
+        function awardPoints(teamIdx) {
+            if (teamIdx >= 0) {
+                playSFX('correct');
+                teams[teamIdx].score += activeQuestion.points;
+                
+                // Trigger Confetti
+                confetti({
+                    particleCount: 80,
+                    spread: 60,
+                    origin: { y: 0.6 }
+                });
+            } else {
+                playSFX('wrong');
+            }
+
+            // Mark question as used
+            if (!usedQuestions.includes(activeQuestion.id)) {
+                usedQuestions.push(activeQuestion.id);
+            }
+
+            saveState();
+            renderTeams();
+            renderJeopardyGrid();
+            closeQuestionModal();
+        }
+
+        function closeQuestionModal() {
+            clearInterval(timerInterval);
+            document.getElementById('question-modal').classList.add('hidden');
+        }
+
+        function switchTab(tab) {
+            playSFX('click');
+            document.getElementById('tab-board').classList.add('hidden');
+            document.getElementById('tab-wheel').classList.add('hidden');
+            document.getElementById('tab-fraction').classList.add('hidden');
+
+            document.getElementById('btn-tab-board').className = "px-4 py-2 rounded-lg text-sm font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 transition";
+            document.getElementById('btn-tab-wheel').className = "px-4 py-2 rounded-lg text-sm font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 transition";
+            document.getElementById('btn-tab-fraction').className = "px-4 py-2 rounded-lg text-sm font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 transition";
+
+            if (tab === 'board') {
+                document.getElementById('tab-board').classList.remove('hidden');
+                document.getElementById('btn-tab-board').className = "px-4 py-2 rounded-lg text-sm font-semibold bg-cyan-600 text-white shadow-md hover:bg-cyan-500 transition";
+            } else if (tab === 'wheel') {
+                document.getElementById('tab-wheel').classList.remove('hidden');
+                document.getElementById('btn-tab-wheel').className = "px-4 py-2 rounded-lg text-sm font-semibold bg-amber-600 text-white shadow-md hover:bg-amber-500 transition";
+                drawWheel();
+            } else if (tab === 'fraction') {
+                document.getElementById('tab-fraction').classList.remove('hidden');
+                document.getElementById('btn-tab-fraction').className = "px-4 py-2 rounded-lg text-sm font-semibold bg-teal-600 text-white shadow-md hover:bg-teal-500 transition";
+                showFractionInfo(0);
+            }
+        }
+
+        const wheelOptions = [
+            "Alkana", "Bonus +200 Poin", 
+            "Alkena", "Tukar Poin!", 
+            "Alkuna", "Double Poin!", 
+            "Benzena", "Zonk (-100)", 
+            "Isooktana", "Petrolium"
+        ];
+        const wheelColors = ["#06b6d4", "#f59e0b", "#10b981", "#ec4899", "#6366f1", "#f43f5e", "#8b5cf6", "#64748b", "#14b8a6", "#f97316"];
+        let currentWheelAngle = 0;
+        let isSpinning = false;
+
+        function drawWheel() {
+            const canvas = document.getElementById('wheel-canvas');
+            if (!canvas.getContext) return;
+            const ctx = canvas.getContext('2d');
+            const numOptions = wheelOptions.length;
+            const arcSize = (2 * Math.PI) / numOptions;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const radius = canvas.width / 2 - 10;
+
+            for (let i = 0; i < numOptions; i++) {
+                const angle = currentWheelAngle + i * arcSize;
+                ctx.beginPath();
+                ctx.fillStyle = wheelColors[i % wheelColors.length];
+                ctx.moveTo(centerX, centerY);
+                ctx.arc(centerX, centerY, radius, angle, angle + arcSize);
+                ctx.lineTo(centerX, centerY);
+                ctx.fill();
+                ctx.stroke();
+
+                // Text
+                ctx.save();
+                ctx.translate(centerX, centerY);
+                ctx.rotate(angle + arcSize / 2);
+                ctx.textAlign = "right";
+                ctx.fillStyle = "#ffffff";
+                ctx.font = "bold 13px Poppins, sans-serif";
+                ctx.fillText(wheelOptions[i], radius - 20, 5);
+                ctx.restore();
+            }
+        }
+
+        function spinWheel() {
+            if (isSpinning) return;
+            isSpinning = true;
+            playSFX('click');
+
+            document.getElementById('wheel-result').classList.add('hidden');
+            const spinAngleTotal = Math.PI * 2 * (5 + Math.random() * 5); // 5 to 10 full turns
+            const duration = 4000;
+            const startTimestamp = performance.now();
+
+            function animateWheel(now) {
+                const elapsed = now - startTimestamp;
+                const progress = Math.min(elapsed / duration, 1);
+                // Ease out cubic
+                const easeOut = 1 - Math.pow(1 - progress, 3);
+
+                currentWheelAngle = easeOut * spinAngleTotal;
+                drawWheel();
+
+                if (progress < 1) {
+                    requestAnimationFrame(animateWheel);
+                } else {
+                    isSpinning = false;
+                    const numOptions = wheelOptions.length;
+                    const normalizedAngle = (2 * Math.PI - (currentWheelAngle % (2 * Math.PI))) % (2 * Math.PI);
+                    const selectedIndex = Math.floor(normalizedAngle / ((2 * Math.PI) / numOptions));
+                    
+                    const resultText = wheelOptions[selectedIndex];
+                    document.getElementById('wheel-result-text').innerText = resultText;
+                    document.getElementById('wheel-result').classList.remove('hidden');
+                    playSFX('correct');
+
+                    confetti({ particleCount: 50, spread: 50 });
+                }
+            }
+
+            requestAnimationFrame(animateWheel);
+        }
+
+        function showFractionInfo(index) {
+            playSFX('click');
+            const data = fractionDetails[index];
+            document.getElementById('frac-title').innerText = data.title;
+            document.getElementById('frac-carbon').innerText = data.carbon;
+            document.getElementById('frac-boiling').innerText = data.boiling;
+            document.getElementById('frac-usage').innerText = data.usage;
+        }
+
+        function saveState() {
+            localStorage.setItem('chem_teams', JSON.stringify(teams));
+            localStorage.setItem('chem_used_q', JSON.stringify(usedQuestions));
+        }
+
+        function resetGamePrompt() {
+            if (confirm("Apakah Anda yakin ingin meriset seluruh skor tim dan membuka kembali semua soal?")) {
+                localStorage.removeItem('chem_teams');
+                localStorage.removeItem('chem_used_q');
+                teams = JSON.parse(JSON.stringify(defaultTeams));
+                usedQuestions = [];
+                renderTeams();
+                renderJeopardyGrid();
+                alert("Game telah berhasil direset!");
+            }
+        }
+
+        window.onload = function() {
+            renderTeams();
+            renderJeopardyGrid();
+        };
+    </script>
+</body>
+</html>
